@@ -1,0 +1,67 @@
+*&---------------------------------------------------------------------*
+*& Report  ZTESTOVR2
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT zdemo_tranchor.
+
+PARAMETERS : p_ref TYPE flag AS CHECKBOX.
+PARAMETERS : p_size TYPE int4 DEFAULT 100.
+
+DATA :
+      lo_tranchor TYPE REF TO zcl_tranchor.
+
+DATA :
+      lt_matnr TYPE STANDARD TABLE OF mara-matnr.
+
+DATA :
+      lv_mem_before TYPE abap_msize,
+      lv_mem_after TYPE abap_msize.
+
+cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_before ).
+SELECT matnr FROM mara INTO TABLE lt_matnr.
+cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_after ).
+WRITE : 'Original :', |{ lv_mem_after - lv_mem_before }|, /.
+
+
+CASE abap_true.
+
+  WHEN p_ref.
+    cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_before ).
+    CREATE OBJECT lo_tranchor
+      EXPORTING
+        it_data            = lt_matnr
+        iv_using_reference = abap_true
+        iv_package_size    = p_size.
+    cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_after ).
+    WRITE : 'Ref :', |{ lv_mem_after - lv_mem_before }|, /.
+
+
+  WHEN OTHERS.
+    cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_before ).
+    CREATE OBJECT lo_tranchor
+      EXPORTING
+        it_data            = lt_matnr
+        iv_using_reference = abap_false
+        iv_package_size    = p_size.
+    cl_abap_memory_utilities=>get_total_used_size( IMPORTING size = lv_mem_after ).
+    WRITE : 'Copie :', |{ lv_mem_after - lv_mem_before }|, /.
+
+ENDCASE.
+
+  WRITE : /, 'Nombre de lignes :', |{ lines( lt_matnr ) }|.
+  WRITE : /, 'Itération paquet :'.
+DATA : lv_int4 TYPE int4. DATA : lt_matnr_package TYPE STANDARD TABLE OF matnr.
+WHILE lo_tranchor->has_next( ) EQ abap_true.
+
+  FREE : lt_matnr_package .
+  ADD 1 TO lv_int4.
+  WRITE : /, |{ lv_int4 }|.
+
+  lo_tranchor->get_next( IMPORTING et_package = lt_matnr_package ).
+
+ENDWHILE.
+FREE : lt_matnr_package .
